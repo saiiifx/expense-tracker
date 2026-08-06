@@ -1,21 +1,18 @@
-name: CI/CD - Build and Push Images
+name: CI/CD - Build, Push and Deploy
 
 on:
   push:
     branches: [ main ]
 
 env:
-  REGISTRY: ghcr.io
   BACKEND_IMAGE: ghcr.io/saiiifx/expense-tracker-backend
-  FRONTEND_IMAGE: ghcr.io/saiiifx/expense-tracker-frontend
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: read
       packages: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,9 +32,13 @@ jobs:
           push: true
           tags: ${{ env.BACKEND_IMAGE }}:latest
 
-      - name: Build and push frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: app/frontend
-          push: true
-          tags: ${{ env.FRONTEND_IMAGE }}:latest
+      - name: Deploy - restart backend container
+        run: |
+          docker stop expense-backend || true
+          docker rm expense-backend || true
+          docker run -d --name expense-backend \
+            --restart unless-stopped \
+            --network app_default \
+            -p 8080:8000 \
+            -e DATABASE_URL="postgresql+psycopg2://admin:password123@postgres:5432/admin" \
+            ${{ env.BACKEND_IMAGE }}:latest
