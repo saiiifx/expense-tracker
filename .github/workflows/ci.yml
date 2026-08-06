@@ -32,10 +32,11 @@ jobs:
           push: true
           tags: ${{ env.BACKEND_IMAGE }}:latest
 
-      - name: Clean up old container and stuck ports
+      - name: Docker compose down (stop old stack)
+        working-directory: app
         run: |
-          echo "Removing old container if exists..."
-          docker rm -f expense-backend 2>/dev/null || true
+          echo "Stopping old stack if running..."
+          docker compose down || true
 
           echo "Checking for stuck rootlessport processes on 8080..."
           PID=$(sudo ss -tulpn 2>/dev/null | grep ':8080 ' | grep -oP 'pid=\K[0-9]+' | head -1)
@@ -45,14 +46,11 @@ jobs:
             sleep 2
           fi
 
-      - name: Deploy - run backend container
+      - name: Docker compose up (deploy new stack)
+        working-directory: app
         run: |
-          docker run -d --name expense-backend \
-            --restart unless-stopped \
-            --network app_default \
-            -p 8080:8000 \
-            -e DATABASE_URL="postgresql+psycopg2://admin:password123@postgres:5432/admin" \
-            ${{ env.BACKEND_IMAGE }}:latest
+          docker compose pull backend || true
+          docker compose up -d
 
       - name: Verify deployment
         run: |
