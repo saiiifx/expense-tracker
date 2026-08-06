@@ -27,10 +27,9 @@ jobs:
           push: true
           tags: ${{ env.BACKEND_IMAGE }}:latest
       - name: Docker compose down (stop old stack)
-        working-directory: app
         run: |
           echo "Stopping old stack if running..."
-          docker compose down || true
+          docker compose -f ~/deploy/docker-compose.yml down || true
           echo "Checking for stuck rootlessport processes on 8080..."
           PID=$(sudo ss -tulpn 2>/dev/null | grep ':8080 ' | grep -oP 'pid=\K[0-9]+' | head -1)
           if [ -n "$PID" ]; then
@@ -39,10 +38,9 @@ jobs:
             sleep 2
           fi
       - name: Docker compose up (deploy new stack)
-        working-directory: app
         run: |
-          docker compose pull backend || true
-          docker compose up -d
+          docker compose -f ~/deploy/docker-compose.yml pull backend || true
+          docker compose -f ~/deploy/docker-compose.yml up -d
       - name: Verify deployment
         run: |
           sleep 5
