@@ -1,0 +1,20 @@
+name: CI - Build Docker Images
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t app-backend:ci -f app/backend/dockerfile app
+
+      - name: Build frontend image
+        run: docker build -t app-frontend:ci app/frontend
