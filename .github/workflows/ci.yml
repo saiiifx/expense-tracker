@@ -1,20 +1,43 @@
-name: CI - Build Docker Images
+name: CI/CD - Build and Push Images
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/saiiifx/expense-tracker-backend
+  FRONTEND_IMAGE: ghcr.io/saiiifx/expense-tracker-frontend
 
 jobs:
-  build-backend:
+  build-and-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build backend image
-        run: docker build -t app-backend:ci -f app/backend/dockerfile app
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build frontend image
-        run: docker build -t app-frontend:ci app/frontend
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: app
+          file: app/backend/dockerfile
+          push: true
+          tags: ${{ env.BACKEND_IMAGE }}:latest
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: app/frontend
+          push: true
+          tags: ${{ env.FRONTEND_IMAGE }}:latest
