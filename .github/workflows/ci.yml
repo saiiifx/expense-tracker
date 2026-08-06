@@ -1,12 +1,9 @@
 name: CI/CD - Build, Push and Deploy
-
 on:
   push:
     branches: [ main ]
-
 env:
   BACKEND_IMAGE: ghcr.io/saiiifx/expense-tracker-backend
-
 jobs:
   build-and-push:
     runs-on: self-hosted
@@ -16,14 +13,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Build and push backend image
         uses: docker/build-push-action@v5
         with:
@@ -31,29 +26,12 @@ jobs:
           file: app/backend/dockerfile
           push: true
           tags: ${{ env.BACKEND_IMAGE }}:latest
-
-      - name: Clean up old container and stuck ports
-        run: |
-          echo "Removing old container if exists..."
-          docker rm -f expense-backend 2>/dev/null || true
-
-          echo "Checking for stuck rootlessport processes on 8080..."
-          PID=$(sudo ss -tulpn 2>/dev/null | grep ':8080 ' | grep -oP 'pid=\K[0-9]+' | head -1)
-          if [ -n "$PID" ]; then
-            echo "Killing stuck process $PID"
-            sudo kill -9 "$PID" || true
-            sleep 2
-          fi
-
-      - name: Deploy - run backend container
-        run: |
-          docker run -d --name expense-backend \
-            --restart unless-stopped \
-            --network app_default \
-            -p 8080:8000 \
-            -e DATABASE_URL="postgresql+psycopg2://admin:password123@postgres:5432/admin" \
-            ${{ env.BACKEND_IMAGE }}:latest
-
+      - name: Docker compose down
+        working-directory: app
+        run: docker compose down || true
+      - name: Docker compose up
+        working-directory: app
+        run: docker compose up -d
       - name: Verify deployment
         run: |
           sleep 5
